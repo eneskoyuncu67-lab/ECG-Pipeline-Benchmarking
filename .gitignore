@@ -1,0 +1,26 @@
+# Local configuration (contains machine-specific paths)
+config.yaml
+
+# Participant data and pipeline outputs: never commit these
+*.bdf
+*.edf
+*.mat
+*.tsv
+*.csv
+*.png
+recomputed/
+data/
+derivatives/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
