@@ -1,6 +1,6 @@
-# ECG Pipeline Comparison
+# ECG Pipeline Benchmarking
 
-A config-driven Python tool that compares three ECG preprocessing pipelines on the same recordings. It measures how well their cardiac landmarks and HRV metrics agree. It works with any project whose pipelines export landmarks as JSON or MAT files.
+A config-driven Python tool that benchmarks three ECG preprocessing pipelines on the same recordings. It measures how well their cardiac landmarks and HRV metrics agree. It works with any pipelines that export landmarks as JSON or MAT files.
 
 ## Contents
 
@@ -16,11 +16,11 @@ A config-driven Python tool that compares three ECG preprocessing pipelines on t
 
 The three pipelines have fixed roles. You choose their display names in the config.
 
-| Role key | Role |
-|---|---|
-| `bbsig` | Reference pipeline (ground truth in scenario A) |
-| `lslh` | Second pipeline (candidate in A and ground truth in scenario B) |
-| `cp` | Third pipeline (candidate in A and B) |
+| Role key | Default label | Role |
+|---|---|---|
+| `pipe_a` | Pipeline A | Reference pipeline (ground truth in scenario A) |
+| `pipe_b` | Pipeline B | Candidate in scenario A and ground truth in scenario B |
+| `pipe_c` | Pipeline C | Candidate in scenarios A and B |
 
 Supported landmarks are R-peaks, T-peaks and T-offsets. R-peaks are required for every pipeline. A landmark that a pipeline does not provide is skipped for that pipeline.
 
@@ -30,14 +30,14 @@ Candidate landmarks are matched one-to-one to reference landmarks. Matching is g
 
 Two ground-truth scenarios are run:
 
-- **Scenario A.** `lslh` and `cp` are compared against `bbsig`.
-- **Scenario B.** `cp` is compared against `lslh`.
+- **Scenario A.** Pipelines B and C are compared against Pipeline A.
+- **Scenario B.** Pipeline C is compared against Pipeline B.
 
 Both scenarios are computed at ±50 ms and ±70 ms. The output also includes the mean signed timing error (bias) and its SD for matched pairs.
 
 ### 2. Landmark timing precision (MAE and SD)
 
-This is the continuous counterpart to Jaccard and F1. For pairs matched within ±50 ms it reports the mean absolute timing error. It also reports the within-subject SD of the absolute errors. `bbsig` is the reference.
+This is the continuous counterpart to Jaccard and F1. For pairs matched within ±50 ms it reports the mean absolute timing error. It also reports the within-subject SD of the absolute errors. Pipeline A is the reference.
 
 ### 3. Detection Error Rate vs. Detector Temporal Tolerance
 
@@ -59,8 +59,8 @@ These are computed on the raw ECG. This is the shared input of all three pipelin
 Python 3 is required.
 
 ```bash
-git clone https://github.com/<user>/<repo>.git
-cd <repo>
+git clone https://github.com/eneskoyuncu67-lab/ECG-Pipeline-Benchmarking.git
+cd ECG-Pipeline-Benchmarking
 pip install -r requirements.txt
 ```
 
@@ -84,8 +84,8 @@ File paths accept these placeholders:
 
 | Placeholder | Example |
 |---|---|
-| `{subject}` | `sub-09` |
-| `{num}` | `09` |
+| `{subject}` | `sub-01` |
+| `{num}` | `01` |
 | `{task}` | `MyTask` |
 | `{task_lower}` | `mytask` |
 
@@ -106,7 +106,7 @@ Example:
 
 ```yaml
 pipelines:
-  cp:
+  pipe_c:
     label: Pipeline C
     file: 'data/pipeline_c/{subject}_{task_lower}_landmarks.mat'
     format: mat
@@ -122,12 +122,14 @@ Four tab-separated tables provide per-subject HRV metrics.
 
 | Config key | Required columns | Optional columns |
 |---|---|---|
-| `bbsig_artifacts` | `subject_id`, `task`, `n_peaks`, `pct_artifacts` | |
-| `bbsig_hrv` | `subject_id`, `task`, `timestamp` | `MeanBPM`, `SDNN`, `RMSSD`, `LF_HF` |
-| `lslh_hrv` | `subject_id`, `task` | `timestamp`, `n_peaks`, HRV metrics |
-| `cp_hrv` | `subject_id`, `task`, `timestamp` | `n_peaks`, HRV metrics |
+| `pipe_a_artifacts` | `subject_id`, `task`, `n_peaks`, `pct_artifacts` | |
+| `pipe_a_hrv` | `subject_id`, `task`, `timestamp` | `MeanBPM`, `SDNN`, `RMSSD`, `LF_HF` |
+| `pipe_b_hrv` | `subject_id`, `task` | `timestamp`, `n_peaks`, HRV metrics |
+| `pipe_c_hrv` | `subject_id`, `task`, `timestamp` | `n_peaks`, HRV metrics |
 
-`subject_id` must use the form `sub-<NN>`. When a subject appears more than once the row with the latest `timestamp` is kept. For `bbsig_artifacts` the row with the lowest `pct_artifacts` is kept.
+`subject_id` must use the form `sub-<NN>`. When a subject appears more than once the row with the latest `timestamp` is kept. For `pipe_a_artifacts` the row with the lowest `pct_artifacts` is kept.
+
+Set the unit of `SDNN` and `RMSSD` for each table under `hrv_time_units` (`s` or `ms`). Tables in seconds are converted to ms before comparison.
 
 ### Raw ECG
 
@@ -135,14 +137,14 @@ Raw recordings must be EDF or BDF. All files matching `raw_ecg.files` are concat
 
 ## Outputs
 
-File names use the role keys (`BBSIG`, `LSLH`, `CP`). Figure titles and axis labels use your configured labels.
+File names use `pipelineA`, `pipelineB` and `pipelineC`. Figure titles and axis labels use your configured labels.
 
 ### Tables
 
 | File | Content |
 |---|---|
 | `peak_agreement_<ref>_ground_truth_<task>_<tol>.tsv` | Per-subject TP, FP, FN, Jaccard, F1, timing bias and SD |
-| `landmark_timing_precision_BBSIG_ground_truth_<task>.tsv` | Per-subject MAE and SD |
+| `landmark_timing_precision_pipelineA_ground_truth_<task>.tsv` | Per-subject MAE and SD |
 | `bland_altman_recomputed_<pair>.csv` | Bland-Altman statistics per metric |
 | `raw_signal_quality_<task>.tsv` | Per-subject kSQI and pSQI |
 
@@ -153,7 +155,7 @@ File names use the role keys (`BBSIG`, `LSLH`, `CP`). Figure titles and axis lab
 | `jaccard_f1_<ref>_ground_truth_combined.png` | Jaccard and F1 at ±50 ms (top) and ±70 ms (bottom) |
 | `f1_only_<ref>_ground_truth_50ms.png` | F1 at ±50 ms |
 | `jaccard_only_<ref>_ground_truth_50ms.png` | Jaccard at ±50 ms |
-| `landmark_timing_precision_BBSIG_ground_truth.png` | MAE and SD |
+| `landmark_timing_precision_pipelineA_ground_truth.png` | MAE and SD |
 | `der_vs_dtt_combined.png` | DER vs DTT for both scenarios |
 | `outcome_measures_vs_dtt_<ref>_ground_truth.png` | All five outcome measures vs DTT |
 | `timing_error_<ref>_ground_truth*.png` | Timing bias and jitter at ±70 ms |
@@ -165,7 +167,6 @@ Figures use Times New Roman at 12 pt. Matplotlib falls back to a default font if
 
 ## Notes
 
-- `SDNN` and `RMSSD` in the `bbsig_hrv` and `cp_hrv` tables are expected in seconds. They are converted to ms. The `lslh_hrv` table is used as it is, so give it in ms.
 - Sensitivity, positive predictivity, DER, Jaccard and F1 are all derived from the same pooled TP, FP and FN. They are not independent pieces of evidence.
 - Jaccard and F1 are linked by F1 = 2J / (1 + J).
 - The pSQI band limits here (5 to 15 Hz over 5 to 40 Hz) differ from the spectral index in Li et al. [3], which uses 5 to 14 Hz over 5 to 50 Hz.
